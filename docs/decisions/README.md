@@ -1,6 +1,6 @@
 # 决策记录索引
 
-本目录记录 `prompt-optimize` skill 修改中的重要问题、取舍和决定。决策记录的目的不是保存所有历史细节, 而是留下后续维护者需要复用的判断: 为什么要这样组织 skill、为什么某条规则属于某个 owner、为什么保留或删除某类边界。
+本目录记录 `prompt-optimize` skill 和维护项目的关键设计决策。决策记录不是变更日志, 也不是每次执行工作的流水账；它只保存后续维护需要回放的判断: 当时遇到什么问题、有哪些约束、为什么采用当前方案、这个方案怎样影响后续维护。
 
 ## 为什么记录决策
 
@@ -14,40 +14,30 @@ skill 的修改历史本身能体现维护者对 prompt、规则和 agent 行为
 4. 支持安全演进: 后续决定可以替代旧决定, 但保留旧记录能解释当时的约束、风险和影响。
 5. 帮助 agent 稳定协作: agent 可以通过决策记录理解项目长期偏好, 而不是把每次对话里的临时上下文都写进规则。
 
-决策记录不是完整变更日志。它关注会影响未来判断的原因、方案和影响; 普通文本修正、格式调整和一次性执行细节由 git diff 或对话承接。
+## 记录门槛
+
+skill 相关决策可以比项目级决策稍细, 因为 skill 的触发条件、读取策略、内容 owner、规则边界和验收标准会直接影响后续输出。只要改动会改变后续如何判断、如何写规则或如何组织引用, 就可以记录。
+
+项目级决策门槛更高。只有改变长期维护契约、目录边界、自动化交付方式或跨文件 owner 的决定才记录。普通文案修正、格式调整、链接修复、脚本内部实现步骤、CI 单步调整和一次性执行细节不进入决策记录。
+
+完整规则见 [maintenance.md](maintenance.md)。
 
 ## 影响面
 
 一级目录使用影响面 ID。影响面 ID 是稳定责任边界, 用 kebab-case 命名, 不使用日期、阶段或一次性动作。
 
-1. `project-documentation`: README、项目介绍、项目文档边界和仓库级说明。
-2. `agent-instructions`: `AGENTS.md` 的项目级 agent 维护约定。
-3. `decision-records`: 决策记录体系自身的结构、目的、命名和维护方式。
-4. `project-tooling`: 本地脚本、打包方式、CI 和交付制品相关约定。
+当前影响面:
 
-更多维护规则见 [maintenance.md](maintenance.md)。
+1. `decision-records`: 决策记录体系自身的结构、目的、命名、门槛和维护方式。
+
+可能出现的影响面示例:
+
+1. `skill-behavior`: skill 触发条件、执行流程、输出边界或完成检查。
+2. `skill-references`: skill 引用文件的 owner 分工、结构拆分和跨文件关系。
+3. `project-tooling`: 本地脚本、打包方式、CI 和交付制品的长期契约。
 
 ## 当前决策
 
-`project-documentation`:
-
-1. [2026-06-27 - 建立项目介绍和决策记录](project-documentation/2026-06-27-establish-project-intro-and-decision-records.md)
-2. [2026-06-27 - 项目文档只保留仓库内信息](project-documentation/2026-06-27-keep-project-docs-in-repo-scope.md)
-
-`agent-instructions`:
-
-1. [2026-06-27 - 取消固定读取清单](agent-instructions/2026-06-27-remove-fixed-reading-list.md)
-2. [2026-06-27 - AGENTS 只保留稳定项目约定](agent-instructions/2026-06-27-keep-agents-stable.md)
-3. [2026-06-27 - 细化 AGENTS 中的决策记录入口](agent-instructions/2026-06-27-detail-decision-entry-in-agents.md)
-
 `decision-records`:
 
-1. [2026-06-27 - 补充决策记录目的说明](decision-records/2026-06-27-explain-decision-record-purpose.md)
-2. [2026-06-27 - 按影响面组织决策记录](decision-records/2026-06-27-structure-decisions-by-impact-area.md)
-
-`project-tooling`:
-
-1. [2026-06-27 - 增加可重复校验和打包脚本](project-tooling/2026-06-27-add-repeatable-validation-and-packaging-scripts.md)
-2. [2026-06-27 - 在 GitHub CI 中打包 skill 制品](project-tooling/2026-06-27-package-skill-in-github-ci.md)
-3. [2026-06-27 - 建立工具链 owner 文档](project-tooling/2026-06-27-establish-tooling-owner-document.md)
-4. [2026-06-27 - 增加决策记录结构校验脚本](project-tooling/2026-06-27-add-decision-structure-validation-script.md)
+1. [2026-06-27 - 建立决策记录策略](decision-records/2026-06-27-establish-decision-record-policy.md)

@@ -10,7 +10,7 @@ export type DecisionValidationResult = {
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requiredRootFiles = new Set(["README.md", "maintenance.md"]);
-const requiredSections = ["问题:", "决策过程:", "决定:", "影响:", "验证:"];
+const requiredSections = ["## 问题", "## 背景与约束", "## 决策过程", "## 决定", "## 影响", "## 验证"];
 
 async function exists(targetPath: string): Promise<boolean> {
   try {
@@ -41,6 +41,14 @@ function isValidDatePrefix(dateText: string): boolean {
     && date.getUTCDate() === day;
 }
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findSectionIndex(body: string, section: string): number {
+  return body.search(new RegExp(`^${escapeRegExp(section)}\\s*$`, "m"));
+}
+
 function validateDecisionBody(relativePath: string, fileName: string, body: string, errors: string[]): void {
   const datePrefix = fileName.slice(0, 10);
   if (!isValidDatePrefix(datePrefix)) {
@@ -51,19 +59,44 @@ function validateDecisionBody(relativePath: string, fileName: string, body: stri
     errors.push(`${relativePath} must start with "# ${datePrefix} - <标题>"`);
   }
 
-  let lastIndex = -1;
-  for (const section of requiredSections) {
-    const sectionIndex = body.indexOf(section);
+  const sectionIndexes = requiredSections.map((section) => findSectionIndex(body, section));
+
+  for (let index = 0; index < requiredSections.length; index += 1) {
+    const section = requiredSections[index];
+    const sectionIndex = sectionIndexes[index];
     if (sectionIndex < 0) {
       errors.push(`${relativePath} is missing section ${section}`);
+    }
+  }
+
+  let lastIndex = -1;
+  for (const sectionIndex of sectionIndexes) {
+    if (sectionIndex < 0) {
       continue;
     }
 
     if (sectionIndex < lastIndex) {
-      errors.push(`${relativePath} section ${section} is out of order`);
+      errors.push(`${relativePath} has sections out of order`);
+      break;
+    }
+    lastIndex = sectionIndex;
+  }
+
+  for (let index = 0; index < requiredSections.length; index += 1) {
+    const section = requiredSections[index];
+    const sectionIndex = sectionIndexes[index];
+    if (sectionIndex < 0) {
+      continue;
     }
 
-    lastIndex = sectionIndex;
+    const lineEnd = body.indexOf("\n", sectionIndex);
+    const contentStart = lineEnd >= 0 ? lineEnd + 1 : body.length;
+    const nextSectionIndexes = sectionIndexes.slice(index + 1).filter((value) => value >= 0);
+    const contentEnd = nextSectionIndexes.length > 0 ? Math.min(...nextSectionIndexes) : body.length;
+    const sectionContent = body.slice(contentStart, contentEnd).trim();
+    if (sectionContent.length === 0) {
+      errors.push(`${relativePath} section ${section} must not be empty`);
+    }
   }
 }
 
