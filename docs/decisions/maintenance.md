@@ -20,7 +20,7 @@ YYYY-MM-DD-short-title.md
 
 1. 使用 kebab-case。
 2. 使用名词或名词短语。
-3. 表达长期影响面, 例如 `project-documentation`、`agent-instructions`、`decision-records`。
+3. 表达长期影响面, 例如 `project-documentation`、`agent-instructions`、`decision-records`、`project-tooling`。
 4. 不使用动词开头的一次性任务名。
 5. 不包含日期、阶段、版本号或临时问题编号。
 

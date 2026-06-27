@@ -23,6 +23,7 @@ skill 的修改历史本身能体现维护者对 prompt、规则和 agent 行为
 1. `project-documentation`: README、项目介绍、项目文档边界和仓库级说明。
 2. `agent-instructions`: `AGENTS.md` 的项目级 agent 维护约定。
 3. `decision-records`: 决策记录体系自身的结构、目的、命名和维护方式。
+4. `project-tooling`: 本地脚本、打包方式、CI 和交付制品相关约定。
 
 更多维护规则见 [maintenance.md](maintenance.md)。
 
@@ -43,3 +44,10 @@ skill 的修改历史本身能体现维护者对 prompt、规则和 agent 行为
 
 1. [2026-06-27 - 补充决策记录目的说明](decision-records/2026-06-27-explain-decision-record-purpose.md)
 2. [2026-06-27 - 按影响面组织决策记录](decision-records/2026-06-27-structure-decisions-by-impact-area.md)
+
+`project-tooling`:
+
+1. [2026-06-27 - 增加可重复校验和打包脚本](project-tooling/2026-06-27-add-repeatable-validation-and-packaging-scripts.md)
+2. [2026-06-27 - 在 GitHub CI 中打包 skill 制品](project-tooling/2026-06-27-package-skill-in-github-ci.md)
+3. [2026-06-27 - 建立工具链 owner 文档](project-tooling/2026-06-27-establish-tooling-owner-document.md)
+4. [2026-06-27 - 增加决策记录结构校验脚本](project-tooling/2026-06-27-add-decision-structure-validation-script.md)

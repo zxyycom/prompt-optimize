@@ -1,0 +1,17 @@
+{
+  "name": "prompt-optimize-skill-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "bun": ">=1.3",
+    "pnpm": ">=11"
+  },
+  "scripts": {
+    "validate": "bun scripts/validate.ts",
+    "validate:decisions": "bun scripts/validate-decisions.ts",
+    "pack:skill": "bun scripts/pack-skill.ts",
+    "deploy:package": "bun scripts/validate.ts && bun scripts/pack-skill.ts",
+    "check": "bun scripts/validate.ts && bun scripts/pack-skill.ts"
+  }
+}

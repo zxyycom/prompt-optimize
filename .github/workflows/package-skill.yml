@@ -1,0 +1,42 @@
+name: Package Skill
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate and package
+        run: pnpm run check
+
+      - name: Upload skill zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-optimize-skill
+          path: dist/prompt-optimize.zip
+          if-no-files-found: error

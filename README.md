@@ -10,8 +10,12 @@
 
 ## 目录结构
 
+- `.github/workflows/`: GitHub CI, 用于校验并打包 skill 制品。
 - `AGENTS.md`: Codex agent 维护本仓库时的项目级指令。
 - `docs/decisions/`: skill 修改中的问题发现、取舍和决策记录。
+- `docs/tooling.md`: 脚本、安装、校验、打包和 CI 的 owner 文档。
+- `package.json`: 本地校验、打包和交付准备脚本入口。
+- `scripts/`: 项目级自动化脚本。
 - `skill/prompt-optimize/`: 可安装的 skill 包。
 - `skill/prompt-optimize/SKILL.md`: skill 入口和引用导航。
 - `skill/prompt-optimize/references/`: skill 按需读取的参考文件。
@@ -27,9 +31,13 @@
 3. `principles.md`: 长期设计理由、原理解释和维护取舍。
 4. `agent-tasks.md`: worker、explorer、并行 agent 和子 agent 任务的协作边界。
 
+## 工具链
+
+脚本、依赖安装、校验、打包和 CI 的具体标准由 [docs/tooling.md](docs/tooling.md) 承接。
+
 ## 维护约定
 
-skill 本体保持在 `skill/prompt-optimize/` 下。仓库根目录和 `docs/` 只放项目级说明、agent 指令、决策记录和仓库元数据。
+skill 本体保持在 `skill/prompt-optimize/` 下。仓库根目录、`docs/`、`scripts/` 和 `.github/` 只放项目级说明、agent 指令、决策记录、工具链说明、自动化脚本、CI 和仓库元数据。
 
 修改 skill 行为、读取策略、内容 owner、引用拆分或长期维护约定时, 在 `docs/decisions/` 追加决策记录。
 
