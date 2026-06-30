@@ -17,19 +17,17 @@
 - `package.json`: 本地校验、打包和交付准备脚本入口。
 - `scripts/`: 项目级自动化脚本。
 - `skill/prompt-optimize/`: 可安装的 skill 包。
-- `skill/prompt-optimize/SKILL.md`: skill 入口和引用导航。
-- `skill/prompt-optimize/references/`: skill 按需读取的参考文件。
+- `skill/prompt-optimize/SKILL.md`: skill 入口、主执行流程和主动引用导航。
+- `skill/prompt-optimize/references/`: skill 按需读取的参考文件和迁移期保留材料。
 
 ## Skill 内容
 
-`skill/prompt-optimize/SKILL.md` 是入口文件, 负责说明触发条件、目标边界、读取策略、执行流程和完成检查。
+`skill/prompt-optimize/SKILL.md` 是入口文件, 负责说明触发条件、目标边界、主动引用策略、主执行流程、交付格式和完成检查。
 
-`skill/prompt-optimize/references/` 存放按需读取的参考文件。每个引用文件承接一种长期 owner:
+`skill/prompt-optimize/references/` 存放按需读取的参考文件。主动引用文件承接以下长期 owner:
 
-1. `workflows.md`: 生成、改写、审阅、直接编辑和交付流程。
-2. `rewrite-rules.md`: 按改写管线承接任务出口、骨架选择、行为审计、内容归位、规则收敛、负向描述、表达落地和沉淀判断。
-3. `principles.md`: 长期设计理由、原理解释和维护取舍。
-4. `agent-tasks.md`: worker、explorer、并行 agent 和子 agent 任务的协作边界。
+1. `principles.md`: 长期设计理由、原理解释和维护取舍。
+2. `agent-tasks.md`: worker、explorer、并行 agent 和子 agent 任务的协作边界。
 
 ## 工具链
 
