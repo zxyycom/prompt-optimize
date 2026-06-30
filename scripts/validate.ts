@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { extractMarkdownHeadingAnchors, extractMarkdownLinks } from "./markdown-links.ts";
 import { validateDecisionRecords } from "./validate-decisions.ts";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -124,61 +125,104 @@ async function validateSkillFrontmatter(): Promise<void> {
   }
 }
 
-function extractMarkdownLinks(markdown: string): string[] {
-  const links: string[] = [];
-  const linkPattern = /!?\[[^\]\r\n]*\]\(([^)\r\n]+)\)/g;
-  let match: RegExpExecArray | null;
+type NormalizedMarkdownTarget =
+  | { kind: "empty"; target: string }
+  | { kind: "external"; target: string }
+  | { anchor: string | null; kind: "internal"; pathTarget: string | null; target: string };
 
-  while ((match = linkPattern.exec(markdown)) !== null) {
-    links.push(match[1]);
-  }
-
-  return links;
-}
-
-function normalizeMarkdownTarget(rawTarget: string): { kind: "external" | "relative"; target: string } | null {
-  let target = rawTarget.trim();
-  if (target.length === 0 || target.startsWith("#")) {
-    return null;
+function normalizeMarkdownTarget(rawTarget: string): NormalizedMarkdownTarget {
+  const target = rawTarget.trim().replace(/^<|>$/g, "");
+  if (target.length === 0) {
+    return { kind: "empty", target };
   }
 
   if (/^[a-z][a-z0-9+.-]*:/i.test(target)) {
     return { kind: "external", target };
   }
 
-  target = target.replace(/^<|>$/g, "");
   const hashIndex = target.indexOf("#");
-  if (hashIndex >= 0) {
-    target = target.slice(0, hashIndex);
-  }
+  const pathTarget = hashIndex >= 0 ? target.slice(0, hashIndex) : target;
+  const anchor = hashIndex >= 0 ? target.slice(hashIndex + 1) : null;
 
-  if (target.length === 0) {
+  return { anchor, kind: "internal", pathTarget: pathTarget.length > 0 ? pathTarget : null, target };
+}
+
+function decodeMarkdownAnchor(anchor: string): string | null {
+  try {
+    return decodeURIComponent(anchor);
+  } catch {
     return null;
   }
-
-  return { kind: "relative", target };
 }
 
 async function validateMarkdownLinks(markdownFiles: string[]): Promise<void> {
+  const headingAnchorsByPath = new Map<string, Set<string>>();
+
+  async function getHeadingAnchors(filePath: string): Promise<Set<string>> {
+    const cached = headingAnchorsByPath.get(filePath);
+    if (cached) {
+      return cached;
+    }
+
+    const markdown = await fs.readFile(filePath, "utf8");
+    const anchors = extractMarkdownHeadingAnchors(markdown);
+    headingAnchorsByPath.set(filePath, anchors);
+    return anchors;
+  }
+
   for (const filePath of markdownFiles) {
     const markdown = await fs.readFile(filePath, "utf8");
-    const links = extractMarkdownLinks(markdown);
+    const { targets, missingReferenceLabels } = extractMarkdownLinks(markdown);
+    const relativeFilePath = toPosix(path.relative(rootDir, filePath));
 
-    for (const rawLink of links) {
-      const normalized = normalizeMarkdownTarget(rawLink);
-      if (!normalized || normalized.kind === "external") {
+    for (const label of missingReferenceLabels) {
+      report(`${relativeFilePath} has an undefined markdown reference link: ${label}`);
+    }
+
+    for (const { target } of targets) {
+      const normalized = normalizeMarkdownTarget(target);
+      if (normalized.kind === "empty") {
+        report(`${relativeFilePath} has an empty markdown link target`);
         continue;
       }
 
-      const resolved = path.resolve(path.dirname(filePath), normalized.target);
+      if (normalized.kind === "external") {
+        report(`${relativeFilePath} links outside the repository: ${target}`);
+        continue;
+      }
+
+      const resolved = normalized.pathTarget
+        ? path.resolve(path.dirname(filePath), normalized.pathTarget)
+        : filePath;
       const relativeToRoot = path.relative(rootDir, resolved);
       if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot)) {
-        report(`${toPosix(path.relative(rootDir, filePath))} links outside the repository: ${rawLink}`);
+        report(`${relativeFilePath} links outside the repository: ${target}`);
         continue;
       }
 
       if (!await exists(resolved)) {
-        report(`${toPosix(path.relative(rootDir, filePath))} has a missing link target: ${rawLink}`);
+        report(`${relativeFilePath} has a missing link target: ${target}`);
+        continue;
+      }
+
+      if (normalized.anchor === null) {
+        continue;
+      }
+
+      const decodedAnchor = decodeMarkdownAnchor(normalized.anchor);
+      if (decodedAnchor === null || decodedAnchor.length === 0) {
+        report(`${relativeFilePath} has an invalid markdown anchor: ${target}`);
+        continue;
+      }
+
+      if (path.extname(resolved) !== ".md") {
+        report(`${relativeFilePath} uses an anchor on a non-markdown target: ${target}`);
+        continue;
+      }
+
+      const anchors = await getHeadingAnchors(resolved);
+      if (!anchors.has(decodedAnchor)) {
+        report(`${relativeFilePath} links to a missing markdown heading anchor: ${target}`);
       }
     }
   }

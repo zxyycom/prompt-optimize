@@ -2,8 +2,8 @@
 
 ## 状态
 - 当前状态: amended
-- 导致状态变化的决策: [2026-06-30 - 给决策记录增加状态和关系](260630-amended-track-decision-status-and-relations.md)
-- 状态说明: 记录门槛和影响面目录仍有回放价值; 文件命名、正文状态和替代关系以后续决策为准。
+- 导致状态变化的决策: [2026-06-30 - 给决策记录增加状态和关系](260630-amended-track-decision-status-and-relations.md), [2026-06-30 - 用 owner 命名决策记录根文档](260630-active-name-decision-root-docs-by-owner.md)
+- 状态说明: 记录门槛和影响面目录仍有回放价值; 文件命名、正文状态、替代关系和根说明文件 owner 以后续决策为准。
 
 ## 问题
 - 决策记录需要帮助后续维护者回放重要设计原因, 但过多项目级记录会把真正重要的判断淹没。
@@ -21,7 +21,7 @@
 4. 因此把决策记录策略收敛为高门槛机制: 只保留后续维护需要回放原因的判断, 并允许删除低价值旧记录。
 
 ## 决定
-- 采用: 决策记录按 `docs/decisions/<impact-area-id>/` 组织, 索引和维护规则分别由 `README.md` 与 `maintenance.md` 承接; 具体文件命名以后续状态规则为准。
+- 采用: 决策记录按 `docs/decisions/<impact-area-id>/` 组织, 清单索引和维护规则分别由 `decision-record-index.md` 与 `decision-record-rules.md` 承接; 具体文件命名以后续状态规则为准。
 - 采用: skill 相关决策可以稍细, 但必须影响后续行为、读取策略、规则 owner、边界或验收标准。
 - 采用: 项目级决策只记录改变长期维护契约、目录边界、自动化交付方式或跨文件 owner 的判断。
 - 采用: 决策正文使用显式小节, 在 `## 决策过程` 中回放多轮收敛过程。
@@ -35,5 +35,5 @@
 - 后续真正影响 skill 行为或长期维护契约的决定, 再按影响面新增记录。
 
 ## 验证
-- 决策索引只列出仍有独立回放价值的记录。
-- 决策维护文档已写明记录门槛、显式结构和低价值旧记录删除规则。
+- `docs/decisions/decision-record-index.md` 只列出仍有独立回放价值的记录。
+- `docs/decisions/decision-record-rules.md` 已写明记录门槛、显式结构和低价值旧记录删除规则。

@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { extractMarkdownLinks } from "./markdown-links.ts";
 
 export type DecisionValidationResult = {
   areaCount: number;
@@ -9,10 +10,11 @@ export type DecisionValidationResult = {
 };
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const requiredRootFiles = new Set(["README.md", "maintenance.md"]);
+const requiredRootFiles = new Set(["decision-record-index.md", "decision-record-rules.md"]);
 const decisionStatuses = new Set(["active", "amended", "superseded", "invalidated"]);
 const sectionOrder = ["## 状态", "## 问题", "## 背景与约束", "## 决策过程", "## 决定", "## 影响", "## 验证"];
 const requiredSections = ["## 状态", "## 问题", "## 决定", "## 影响", "## 验证"];
+const decisionFilePathPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*\/\d{6}-[a-z]+-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 
 async function exists(targetPath: string): Promise<boolean> {
   try {
@@ -78,7 +80,59 @@ function getSectionContent(body: string, sectionIndexes: number[], index: number
   return body.slice(contentStart, contentEnd).trim();
 }
 
-function validateDecisionBody(relativePath: string, fileName: string, body: string, errors: string[]): void {
+async function validateStatusCauseLinks(
+  relativePath: string,
+  decisionDirectory: string,
+  decisionsDir: string,
+  rawLinks: string[],
+  errors: string[]
+): Promise<void> {
+  for (const rawLink of rawLinks) {
+    let target = rawLink.trim().replace(/^<|>$/g, "");
+
+    if (/^[a-z][a-z0-9+.-]*:/i.test(target)) {
+      errors.push(`${relativePath} non-active status cause must link to a repository decision file: ${rawLink}`);
+      continue;
+    }
+
+    const hashIndex = target.indexOf("#");
+    if (hashIndex >= 0) {
+      target = target.slice(0, hashIndex);
+    }
+
+    if (target.length === 0) {
+      errors.push(`${relativePath} non-active status cause must link to a decision file, not only an anchor: ${rawLink}`);
+      continue;
+    }
+
+    const resolvedTarget = path.resolve(decisionDirectory, target);
+    const relativeToDecisions = path.relative(decisionsDir, resolvedTarget);
+    const normalizedRelativeTarget = toPosix(relativeToDecisions);
+
+    if (relativeToDecisions.startsWith("..") || path.isAbsolute(relativeToDecisions)) {
+      errors.push(`${relativePath} non-active status cause links outside docs/decisions: ${rawLink}`);
+      continue;
+    }
+
+    if (!decisionFilePathPattern.test(normalizedRelativeTarget)) {
+      errors.push(`${relativePath} non-active status cause must target a decision file under an impact area: ${rawLink}`);
+      continue;
+    }
+
+    if (!await exists(resolvedTarget)) {
+      errors.push(`${relativePath} non-active status cause target does not exist: ${rawLink}`);
+    }
+  }
+}
+
+async function validateDecisionBody(
+  relativePath: string,
+  fileName: string,
+  body: string,
+  decisionPath: string,
+  decisionsDir: string,
+  errors: string[]
+): Promise<void> {
   const parsedFileName = parseDecisionFileName(fileName);
   const datePrefix = parsedFileName?.datePrefix ?? fileName.slice(0, 6);
   const fullDatePrefix = fullDateFromCompactPrefix(datePrefix);
@@ -162,16 +216,30 @@ function validateDecisionBody(relativePath: string, fileName: string, body: stri
     return;
   }
 
-  if (!/\[[^\]\r\n]+\]\([^)]+\.md\)/.test(cause)) {
-    errors.push(`${relativePath} non-active status cause must be a markdown link to a decision file`);
+  const { targets: statusCauseLinks, missingReferenceLabels } = extractMarkdownLinks(cause);
+  for (const label of missingReferenceLabels) {
+    errors.push(`${relativePath} non-active status cause has an undefined markdown reference link: ${label}`);
   }
+
+  if (statusCauseLinks.length === 0) {
+    errors.push(`${relativePath} non-active status cause must be a markdown link to a decision file`);
+    return;
+  }
+
+  await validateStatusCauseLinks(
+    relativePath,
+    path.dirname(decisionPath),
+    decisionsDir,
+    statusCauseLinks.map((link) => link.target),
+    errors
+  );
 }
 
 export async function validateDecisionRecords(workspaceRoot: string = rootDir): Promise<DecisionValidationResult> {
   const errors: string[] = [];
   const decisionsDir = path.join(workspaceRoot, "docs", "decisions");
-  const indexPath = path.join(decisionsDir, "README.md");
-  const maintenancePath = path.join(decisionsDir, "maintenance.md");
+  const indexPath = path.join(decisionsDir, "decision-record-index.md");
+  const rulesPath = path.join(decisionsDir, "decision-record-rules.md");
   let areaCount = 0;
   let decisionCount = 0;
 
@@ -180,11 +248,11 @@ export async function validateDecisionRecords(workspaceRoot: string = rootDir): 
   }
 
   if (!await exists(indexPath)) {
-    errors.push("docs/decisions/README.md is required");
+    errors.push("docs/decisions/decision-record-index.md is required");
   }
 
-  if (!await exists(maintenancePath)) {
-    errors.push("docs/decisions/maintenance.md is required");
+  if (!await exists(rulesPath)) {
+    errors.push("docs/decisions/decision-record-rules.md is required");
   }
 
   const index = await exists(indexPath) ? await fs.readFile(indexPath, "utf8") : "";
@@ -246,7 +314,7 @@ export async function validateDecisionRecords(workspaceRoot: string = rootDir): 
 
       const decisionPath = path.join(entryPath, areaEntry.name);
       const body = await fs.readFile(decisionPath, "utf8");
-      validateDecisionBody(relativeDecisionPath, areaEntry.name, body, errors);
+      await validateDecisionBody(relativeDecisionPath, areaEntry.name, body, decisionPath, decisionsDir, errors);
       decisionCount += 1;
     }
   }

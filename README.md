@@ -12,7 +12,7 @@
 
 - `.github/workflows/`: GitHub CI, 用于校验、打包并发布 skill 制品。
 - `AGENTS.md`: Codex agent 维护本仓库时的项目级指令。
-- `docs/decisions/`: 重要设计决策的索引、维护规则和回放记录。
+- `docs/decisions/`: 重要设计决策目录; [decision-record-index.md](docs/decisions/decision-record-index.md) 负责清单和影响面导航, [decision-record-rules.md](docs/decisions/decision-record-rules.md) 负责记录门槛、命名、状态和更新流程。
 - `docs/tooling.md`: 脚本、安装、校验、打包和 CI 的 owner 文档。
 - `package.json`: 本地校验、打包和交付准备脚本入口。
 - `scripts/`: 项目级自动化脚本。
@@ -37,6 +37,6 @@
 
 skill 本体保持在 `skill/prompt-optimize/` 下。仓库根目录、`docs/`、`scripts/` 和 `.github/` 只放项目级说明、agent 指令、决策记录、工具链说明、自动化脚本、CI 和仓库元数据。
 
-修改 skill 行为、读取策略、内容 owner、引用拆分或长期维护约定时, 先按 `docs/decisions/maintenance.md` 判断是否达到记录门槛；达到门槛后在 `docs/decisions/` 追加决策记录。
+修改 skill 行为、读取策略、内容 owner、引用拆分或长期维护约定时, 先按 [docs/decisions/decision-record-rules.md](docs/decisions/decision-record-rules.md) 判断是否达到记录门槛；达到门槛后在 [docs/decisions/decision-record-index.md](docs/decisions/decision-record-index.md) 维护清单入口。
 
 项目文档只引用本仓库内的路径。需要说明外部来源、临时调查路径或一次性上下文时, 放在对话或提交说明中, 不写入长期项目文档。

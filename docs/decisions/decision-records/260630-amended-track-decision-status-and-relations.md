@@ -35,6 +35,6 @@
 - 决策校验需要检查文件名状态、正文状态和非 `active` 决策的来源链接。
 
 ## 验证
-- `docs/decisions/maintenance.md` 已写明状态值、命名格式和更新流程。
-- `docs/decisions/README.md` 已按新文件名列出决策清单。
+- `docs/decisions/decision-record-rules.md` 已写明状态值、命名格式和更新流程。
+- `docs/decisions/decision-record-index.md` 已按新文件名列出决策清单。
 - `scripts/validate-decisions.ts` 校验状态命名、状态小节和非 `active` 决策的来源链接。

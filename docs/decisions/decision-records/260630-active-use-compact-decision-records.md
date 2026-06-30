@@ -22,6 +22,6 @@
 - 决策校验需要允许可选小节, 但继续强制状态、问题、决定、影响和验证。
 
 ## 验证
-- `docs/decisions/maintenance.md` 已写明短日期命名和短决策结构。
-- `docs/decisions/README.md` 已更新当前决策清单和状态关系。
+- `docs/decisions/decision-record-rules.md` 已写明短日期命名和短决策结构。
+- `docs/decisions/decision-record-index.md` 已更新当前决策清单和状态关系。
 - `scripts/validate-decisions.ts` 允许省略 `## 背景与约束` 和 `## 决策过程`, 并继续校验必需小节。

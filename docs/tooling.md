@@ -25,7 +25,7 @@
 当前脚本入口:
 
 1. `bun run validate`: 校验 skill 入口、内部链接、决策记录结构和项目文档边界。
-2. `bun run validate:decisions`: 单独校验 `docs/decisions/` 的目录和文件结构。
+2. `bun run validate:decisions`: 单独校验 `docs/decisions/` 的目录、文件结构、索引链接和状态来源链接目标。
 3. `bun run pack:skill`: 将 `skill/prompt-optimize/` 打包为 `dist/prompt-optimize.zip`。
 4. `bun run check`: 先校验, 再打包。
 5. `bun run deploy:package`: 生成本地可交付 zip 制品, 不写入仓库外目录；CI 发布由 workflow 负责。
@@ -38,8 +38,10 @@
 2. 脚本应优先使用 Bun 和 Node 兼容的标准 API, 避免为简单校验和打包引入依赖。
 3. 脚本默认只读写仓库内路径; 需要生成产物时输出到 `dist/`。
 4. 打包脚本只打包 `skill/prompt-optimize/`, 不把项目文档、CI、脚本或仓库元数据放进 skill zip。
-5. 校验脚本应覆盖长期容易漂移的约定, 例如 skill 入口、内部链接、决策记录结构和项目文档边界。
-6. 针对可独立维护的结构, 提供可单独运行的校验脚本; 总校验复用同一规则。
+5. 校验脚本应覆盖长期容易漂移的约定, 例如 skill 入口、内部链接、决策记录结构、决策状态来源链接和项目文档边界。
+6. Markdown 链接提取使用 `mdast-util-from-markdown` 解析 Markdown AST; 脚本只负责仓库路径、状态来源和项目约束校验。
+7. Markdown 链接目标必须是仓库内路径且目标存在; `#anchor` 必须匹配目标 Markdown 文件中的标题锚点。
+8. 针对可独立维护的结构, 提供可单独运行的校验脚本; 总校验复用同一规则。
 
 ## CI 标准
 
