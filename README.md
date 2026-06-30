@@ -27,7 +27,7 @@
 `skill/prompt-optimize/references/` 存放按需读取的参考文件。每个引用文件承接一种长期 owner:
 
 1. `workflows.md`: 生成、改写、审阅、直接编辑和交付流程。
-2. `rewrite-rules.md`: 用途错配、内容 owner、阅读脉络、负向描述、模糊表达、结构格式和沉淀判断。
+2. `rewrite-rules.md`: 按改写管线承接任务出口、骨架选择、行为审计、内容归位、规则收敛、负向描述、表达落地和沉淀判断。
 3. `principles.md`: 长期设计理由、原理解释和维护取舍。
 4. `agent-tasks.md`: worker、explorer、并行 agent 和子 agent 任务的协作边界。
 
