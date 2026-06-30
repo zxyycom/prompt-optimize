@@ -10,7 +10,9 @@ export type DecisionValidationResult = {
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requiredRootFiles = new Set(["README.md", "maintenance.md"]);
-const requiredSections = ["## 问题", "## 背景与约束", "## 决策过程", "## 决定", "## 影响", "## 验证"];
+const decisionStatuses = new Set(["active", "amended", "superseded", "invalidated"]);
+const sectionOrder = ["## 状态", "## 问题", "## 背景与约束", "## 决策过程", "## 决定", "## 影响", "## 验证"];
+const requiredSections = ["## 状态", "## 问题", "## 决定", "## 影响", "## 验证"];
 
 async function exists(targetPath: string): Promise<boolean> {
   try {
@@ -25,20 +27,24 @@ function toPosix(relativePath: string): string {
   return relativePath.split(path.sep).join("/");
 }
 
-function isValidDatePrefix(dateText: string): boolean {
-  const match = dateText.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+function fullDateFromCompactPrefix(dateText: string): string | null {
+  const match = dateText.match(/^(\d{2})(\d{2})(\d{2})$/);
   if (!match) {
-    return false;
+    return null;
   }
 
-  const year = Number(match[1]);
+  const year = 2000 + Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
   const date = new Date(Date.UTC(year, month - 1, day));
 
-  return date.getUTCFullYear() === year
-    && date.getUTCMonth() === month - 1
-    && date.getUTCDate() === day;
+  if (date.getUTCFullYear() !== year
+    || date.getUTCMonth() !== month - 1
+    || date.getUTCDate() !== day) {
+    return null;
+  }
+
+  return `${year}-${match[2]}-${match[3]}`;
 }
 
 function escapeRegExp(text: string): string {
@@ -49,21 +55,55 @@ function findSectionIndex(body: string, section: string): number {
   return body.search(new RegExp(`^${escapeRegExp(section)}\\s*$`, "m"));
 }
 
+function parseDecisionFileName(fileName: string): { datePrefix: string; status: string } | null {
+  const match = fileName.match(/^(\d{6})-([a-z]+)-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/);
+  if (!match) {
+    return null;
+  }
+
+  return { datePrefix: match[1], status: match[2] };
+}
+
+function getSectionContent(body: string, sectionIndexes: number[], index: number): string {
+  const sectionIndex = sectionIndexes[index];
+  if (sectionIndex < 0) {
+    return "";
+  }
+
+  const lineEnd = body.indexOf("\n", sectionIndex);
+  const contentStart = lineEnd >= 0 ? lineEnd + 1 : body.length;
+  const nextSectionIndexes = sectionIndexes.slice(index + 1).filter((value) => value >= 0);
+  const contentEnd = nextSectionIndexes.length > 0 ? Math.min(...nextSectionIndexes) : body.length;
+
+  return body.slice(contentStart, contentEnd).trim();
+}
+
 function validateDecisionBody(relativePath: string, fileName: string, body: string, errors: string[]): void {
-  const datePrefix = fileName.slice(0, 10);
-  if (!isValidDatePrefix(datePrefix)) {
+  const parsedFileName = parseDecisionFileName(fileName);
+  const datePrefix = parsedFileName?.datePrefix ?? fileName.slice(0, 6);
+  const fullDatePrefix = fullDateFromCompactPrefix(datePrefix);
+  const status = parsedFileName?.status;
+
+  if (!parsedFileName) {
+    errors.push(`${relativePath} must use file name format YYMMDD-<status>-short-title.md`);
+  }
+
+  if (!fullDatePrefix) {
     errors.push(`${relativePath} has an invalid date prefix`);
   }
 
-  if (!body.match(new RegExp(`^# ${datePrefix} - .+`, "m"))) {
-    errors.push(`${relativePath} must start with "# ${datePrefix} - <标题>"`);
+  if (status && !decisionStatuses.has(status)) {
+    errors.push(`${relativePath} has unsupported status ${status}`);
   }
 
-  const sectionIndexes = requiredSections.map((section) => findSectionIndex(body, section));
+  if (!fullDatePrefix || !body.match(new RegExp(`^# ${fullDatePrefix} - .+`, "m"))) {
+    errors.push(`${relativePath} must start with "# ${fullDatePrefix ?? "YYYY-MM-DD"} - <标题>"`);
+  }
 
-  for (let index = 0; index < requiredSections.length; index += 1) {
-    const section = requiredSections[index];
-    const sectionIndex = sectionIndexes[index];
+  const sectionIndexes = sectionOrder.map((section) => findSectionIndex(body, section));
+
+  for (const section of requiredSections) {
+    const sectionIndex = findSectionIndex(body, section);
     if (sectionIndex < 0) {
       errors.push(`${relativePath} is missing section ${section}`);
     }
@@ -82,21 +122,48 @@ function validateDecisionBody(relativePath: string, fileName: string, body: stri
     lastIndex = sectionIndex;
   }
 
-  for (let index = 0; index < requiredSections.length; index += 1) {
-    const section = requiredSections[index];
-    const sectionIndex = sectionIndexes[index];
-    if (sectionIndex < 0) {
+  for (let index = 0; index < sectionOrder.length; index += 1) {
+    const section = sectionOrder[index];
+    const sectionContent = getSectionContent(body, sectionIndexes, index);
+    if (sectionIndexes[index] < 0) {
       continue;
     }
 
-    const lineEnd = body.indexOf("\n", sectionIndex);
-    const contentStart = lineEnd >= 0 ? lineEnd + 1 : body.length;
-    const nextSectionIndexes = sectionIndexes.slice(index + 1).filter((value) => value >= 0);
-    const contentEnd = nextSectionIndexes.length > 0 ? Math.min(...nextSectionIndexes) : body.length;
-    const sectionContent = body.slice(contentStart, contentEnd).trim();
     if (sectionContent.length === 0) {
       errors.push(`${relativePath} section ${section} must not be empty`);
     }
+  }
+
+  if (!status || !decisionStatuses.has(status)) {
+    return;
+  }
+
+  const statusContent = getSectionContent(body, sectionIndexes, 0);
+  if (!statusContent.match(new RegExp(`^- 当前状态: ${escapeRegExp(status)}\\s*$`, "m"))) {
+    errors.push(`${relativePath} status section must include "- 当前状态: ${status}"`);
+  }
+
+  const causeMatch = statusContent.match(/^- 导致状态变化的决策: (.+)$/m);
+  if (!causeMatch) {
+    errors.push(`${relativePath} status section must include "- 导致状态变化的决策: <value>"`);
+    return;
+  }
+
+  const cause = causeMatch[1].trim();
+  if (status === "active") {
+    if (cause !== "无") {
+      errors.push(`${relativePath} active decisions must use "无" as status cause`);
+    }
+    return;
+  }
+
+  if (cause === "无") {
+    errors.push(`${relativePath} non-active decisions must link to the later decision that changed their status`);
+    return;
+  }
+
+  if (!/\[[^\]\r\n]+\]\([^)]+\.md\)/.test(cause)) {
+    errors.push(`${relativePath} non-active status cause must be a markdown link to a decision file`);
   }
 }
 
@@ -173,10 +240,6 @@ export async function validateDecisionRecords(workspaceRoot: string = rootDir): 
       }
 
       const relativeDecisionPath = toPosix(path.join(areaId, areaEntry.name));
-      if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(areaEntry.name)) {
-        errors.push(`Decision file name must be YYYY-MM-DD-short-title.md: ${relativeDecisionPath}`);
-      }
-
       if (!index.includes(`](${relativeDecisionPath})`)) {
         errors.push(`Decision index must link to ${relativeDecisionPath}`);
       }

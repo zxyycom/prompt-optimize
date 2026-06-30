@@ -1,12 +1,17 @@
 # 2026-06-30 - 使用 latest release 自动发布 skill 制品
 
+## 状态
+- 当前状态: active
+- 导致状态变化的决策: 无
+- 状态说明: 作为当前 skill 制品发布方式使用。
+
 ## 问题
 - 现有 CI 只在运行结束后上传 workflow artifact, 没有把 `dist/prompt-optimize.zip` 发布到稳定入口。
 - 用户发现当前 CI 不会自动发包, 说明“打包”和“发布”之间的边界需要成为长期维护契约。
 
 ## 背景与约束
 - 本仓库主要维护一个 Codex skill 包, 可交付物是 `dist/prompt-optimize.zip`。
-- 现有脚本已经通过 `pnpm run check` 复用本地校验和打包入口。
+- 现有脚本已经通过 `bun run check` 复用本地校验和打包入口。
 - 项目没有独立版本号和发布清单, 因此按每次提交创建不可变版本 release 会增加维护成本。
 - PR 应只验证候选改动, 不应发布制品。
 
@@ -32,4 +37,4 @@
 ## 验证
 - `.github/workflows/package-skill.yml` 包含 `publish` job, 只在 `main` 分支的 `push` 和 `workflow_dispatch` 发布。
 - `docs/tooling.md` 记录 artifact 与 latest release 的职责。
-- `pnpm run validate` 检查 CI 发布契约关键点。
+- `bun run validate` 检查 CI 发布契约关键点。
