@@ -17,18 +17,18 @@
 ## 工具分工
 
 1. pnpm 管安装: `packageManager` 使用 pnpm, 锁文件使用 `pnpm-lock.yaml`, CI 安装依赖使用 `pnpm install --frozen-lockfile`。
-2. Bun 跑脚本: package scripts 内部直接调用 Bun 执行 TypeScript 脚本。
+2. Bun 管脚本调度和执行: 本地和 CI 通过 `bun run <script>` 调用 package scripts; package scripts 内部直接调用 Bun 执行 TypeScript 脚本。
 3. package scripts 是统一入口: 本地和 CI 都通过 package scripts 调用脚本, 不维护另一套命令。
 
 ## 脚本入口
 
 当前脚本入口:
 
-1. `pnpm run validate`: 校验 skill 入口、内部链接、决策记录结构和项目文档边界。
-2. `pnpm run validate:decisions`: 单独校验 `docs/decisions/` 的目录和文件结构。
-3. `pnpm run pack:skill`: 将 `skill/prompt-optimize/` 打包为 `dist/prompt-optimize.zip`。
-4. `pnpm run check`: 先校验, 再打包。
-5. `pnpm run deploy:package`: 生成本地可交付 zip 制品, 不写入仓库外目录；CI 发布由 workflow 负责。
+1. `bun run validate`: 校验 skill 入口、内部链接、决策记录结构和项目文档边界。
+2. `bun run validate:decisions`: 单独校验 `docs/decisions/` 的目录和文件结构。
+3. `bun run pack:skill`: 将 `skill/prompt-optimize/` 打包为 `dist/prompt-optimize.zip`。
+4. `bun run check`: 先校验, 再打包。
+5. `bun run deploy:package`: 生成本地可交付 zip 制品, 不写入仓库外目录；CI 发布由 workflow 负责。
 
 需要直接排查脚本问题时, 可以用 `bun scripts/<script>.ts` 运行单个脚本。
 
@@ -46,9 +46,9 @@
 GitHub CI 复用本地入口:
 
 1. 安装 Bun, 用于执行 TypeScript 脚本。
-2. 安装 pnpm, 用于依赖安装和 package script 调度。
+2. 安装 pnpm, 用于依赖安装。
 3. 运行 `pnpm install --frozen-lockfile`。
-4. 运行 `pnpm run check`。
+4. 运行 `bun run check`。
 5. 上传 `dist/prompt-optimize.zip` 作为 workflow artifact, 方便从单次运行中排查制品。
 6. 对 `main` 分支的 `push` 和 `workflow_dispatch`, 发布或更新 GitHub Release `prompt-optimize-latest`, 并上传 `dist/prompt-optimize.zip`。
 

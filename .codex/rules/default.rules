@@ -1,0 +1,8 @@
+prefix_rule(pattern=["bun", "run", "validate"], decision="allow")
+prefix_rule(pattern=["bun", "run", "validate:decisions"], decision="allow")
+prefix_rule(pattern=["bun", "run", "pack:skill"], decision="allow")
+prefix_rule(pattern=["bun", "run", "check"], decision="allow")
+prefix_rule(pattern=["bun", "run", "deploy:package"], decision="allow")
+prefix_rule(pattern=["bun", "scripts/validate.ts"], decision="allow")
+prefix_rule(pattern=["bun", "scripts/validate-decisions.ts"], decision="allow")
+prefix_rule(pattern=["bun", "scripts/pack-skill.ts"], decision="allow")

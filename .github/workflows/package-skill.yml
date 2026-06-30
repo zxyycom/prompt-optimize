@@ -32,7 +32,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Validate and package
-        run: pnpm run check
+        run: bun run check
 
       - name: Upload skill zip
         uses: actions/upload-artifact@v4
