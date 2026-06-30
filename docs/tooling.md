@@ -10,7 +10,7 @@
 2. pnpm 与 Bun 的职责分工。
 3. `scripts/` 下自动化脚本的基础标准。
 4. 本地校验、打包和可交付制品规则。
-5. GitHub CI 如何复用本地入口。
+5. GitHub CI 如何复用本地入口并发布可交付制品。
 
 本文件不负责 skill 行为、引用内容、决策记录格式或 agent 项目级协作规则。
 
@@ -28,7 +28,7 @@
 2. `pnpm run validate:decisions`: 单独校验 `docs/decisions/` 的目录和文件结构。
 3. `pnpm run pack:skill`: 将 `skill/prompt-optimize/` 打包为 `dist/prompt-optimize.zip`。
 4. `pnpm run check`: 先校验, 再打包。
-5. `pnpm run deploy:package`: 生成可交付 zip 制品, 不写入仓库外目录。
+5. `pnpm run deploy:package`: 生成本地可交付 zip 制品, 不写入仓库外目录；CI 发布由 workflow 负责。
 
 需要直接排查脚本问题时, 可以用 `bun scripts/<script>.ts` 运行单个脚本。
 
@@ -49,6 +49,7 @@ GitHub CI 复用本地入口:
 2. 安装 pnpm, 用于依赖安装和 package script 调度。
 3. 运行 `pnpm install --frozen-lockfile`。
 4. 运行 `pnpm run check`。
-5. 上传 `dist/prompt-optimize.zip` 作为 workflow artifact。
+5. 上传 `dist/prompt-optimize.zip` 作为 workflow artifact, 方便从单次运行中排查制品。
+6. 对 `main` 分支的 `push` 和 `workflow_dispatch`, 发布或更新 GitHub Release `prompt-optimize-latest`, 并上传 `dist/prompt-optimize.zip`。
 
-CI 只生成并上传制品, 不部署到仓库外位置。
+CI 发布使用固定 release tag `prompt-optimize-latest`。该 tag 指向最新发布提交, release asset 始终覆盖为当前 `dist/prompt-optimize.zip`。PR 只运行校验、打包和 artifact 上传, 不发布 release。

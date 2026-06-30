@@ -212,6 +212,33 @@ async function validatePackageScripts(): Promise<void> {
   }
 }
 
+async function validateCiWorkflow(): Promise<void> {
+  const workflowPath = path.join(rootDir, ".github", "workflows", "package-skill.yml");
+  if (!await exists(workflowPath)) {
+    report(".github/workflows/package-skill.yml is required for CI packaging and release publishing");
+    return;
+  }
+
+  const workflow = await fs.readFile(workflowPath, "utf8");
+  const requiredPatterns = [
+    { label: "package job", pattern: /^\s*package:\s*$/m },
+    { label: "publish job", pattern: /^\s*publish:\s*$/m },
+    { label: "artifact upload", pattern: /actions\/upload-artifact@v4/ },
+    { label: "artifact download", pattern: /actions\/download-artifact@v4/ },
+    { label: "main branch publish guard", pattern: /github\.ref == 'refs\/heads\/main'/ },
+    { label: "release write permission", pattern: /contents:\s*write/ },
+    { label: "latest release tag", pattern: /RELEASE_TAG:\s*prompt-optimize-latest/ },
+    { label: "release creation", pattern: /gh release create/ },
+    { label: "release asset upload", pattern: /gh release upload/ }
+  ];
+
+  for (const { label, pattern } of requiredPatterns) {
+    if (!pattern.test(workflow)) {
+      report(`CI workflow is missing ${label}`);
+    }
+  }
+}
+
 const allFiles = await collectFiles(rootDir);
 const markdownFiles = allFiles.filter((filePath) => filePath.endsWith(".md"));
 
@@ -223,6 +250,7 @@ for (const error of decisionValidation.errors) {
   report(error);
 }
 await validatePackageScripts();
+await validateCiWorkflow();
 
 if (errors.length > 0) {
   console.error("Validation failed:");

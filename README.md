@@ -10,7 +10,7 @@
 
 ## 目录结构
 
-- `.github/workflows/`: GitHub CI, 用于校验并打包 skill 制品。
+- `.github/workflows/`: GitHub CI, 用于校验、打包并发布 skill 制品。
 - `AGENTS.md`: Codex agent 维护本仓库时的项目级指令。
 - `docs/decisions/`: 重要设计决策的索引、维护规则和回放记录。
 - `docs/tooling.md`: 脚本、安装、校验、打包和 CI 的 owner 文档。
