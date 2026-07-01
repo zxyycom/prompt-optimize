@@ -155,28 +155,56 @@ jobs:
           name: skills
           path: dist
 
-      - name: Publish latest release
+      - name: Publish versioned and latest releases
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NAME: ${{ github.event.repository.name }} latest
-          RELEASE_TAG: ${{ github.event.repository.name }}-latest
+          PACKAGE_HASH: ${{ needs.package.outputs.skill_hash }}
+          RELEASE_PREFIX: ${{ github.event.repository.name }}
+          LATEST_NAME: ${{ github.event.repository.name }} latest
+          LATEST_TAG: ${{ github.event.repository.name }}-latest
         run: |
           set -euo pipefail
-          git tag --force "$RELEASE_TAG" "$GITHUB_SHA"
-          git push --force origin "refs/tags/$RELEASE_TAG"
+          package_hash_short="${PACKAGE_HASH:0:12}"
+          version_tag="${RELEASE_PREFIX}-${package_hash_short}"
+          version_name="${RELEASE_PREFIX} ${package_hash_short}"
+          release_notes="Skill packages from $GITHUB_SHA.
 
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release edit "$RELEASE_TAG" \
-              --target "$GITHUB_SHA" \
-              --title "$RELEASE_NAME" \
-              --notes "Latest skill packages from $GITHUB_SHA." \
+Package hash: $PACKAGE_HASH"
+
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$version_tag" >/dev/null 2>&1; then
+            git tag "$version_tag" "$GITHUB_SHA"
+            git push origin "refs/tags/$version_tag"
+          fi
+
+          if gh release view "$version_tag" >/dev/null 2>&1; then
+            gh release edit "$version_tag" \
+              --title "$version_name" \
+              --notes "$release_notes" \
               --latest
-            gh release upload "$RELEASE_TAG" dist/*.zip --clobber
+            gh release upload "$version_tag" dist/*.zip --clobber
           else
-            gh release create "$RELEASE_TAG" \
+            gh release create "$version_tag" \
               dist/*.zip \
               --target "$GITHUB_SHA" \
-              --title "$RELEASE_NAME" \
-              --notes "Latest skill packages from $GITHUB_SHA." \
+              --title "$version_name" \
+              --notes "$release_notes" \
               --latest
+          fi
+
+          git tag --force "$LATEST_TAG" "$GITHUB_SHA"
+          git push --force origin "refs/tags/$LATEST_TAG"
+
+          if gh release view "$LATEST_TAG" >/dev/null 2>&1; then
+            gh release edit "$LATEST_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$LATEST_NAME" \
+              --notes "$release_notes"
+            gh release upload "$LATEST_TAG" dist/*.zip --clobber
+          else
+            gh release create "$LATEST_TAG" \
+              dist/*.zip \
+              --target "$GITHUB_SHA" \
+              --title "$LATEST_NAME" \
+              --notes "$release_notes" \
+              --latest=false
           fi
