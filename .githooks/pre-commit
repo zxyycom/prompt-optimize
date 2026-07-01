@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+git write-tree --prefix=skill/ > skill-package.hash
+git add skill-package.hash

@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "skill/**"
+      - "skill-package.hash"
+      - ".githooks/**"
       - ".github/workflows/publish-skill-package.yml"
   workflow_dispatch:
 
@@ -18,7 +20,7 @@ jobs:
     outputs:
       skill_hash: ${{ steps.skill_hash.outputs.current_hash }}
       recorded_skill_hash: ${{ steps.skill_hash.outputs.recorded_hash }}
-      skill_hash_changed: ${{ steps.skill_hash.outputs.changed }}
+      skill_hash_changed: ${{ steps.release_gate.outputs.changed }}
 
     steps:
       - name: Checkout
@@ -48,9 +50,32 @@ jobs:
             fi
           done
 
-      - name: Read previous published hash
+      - name: Check skill hash
+        id: skill_hash
+        run: |
+          set -euo pipefail
+          current_hash="$(git rev-parse HEAD:skill)"
+          recorded_hash=""
+
+          if [ -f skill-package.hash ]; then
+            recorded_hash="$(tr -d '\r\n' < skill-package.hash)"
+          fi
+
+          if [ "$current_hash" != "$recorded_hash" ]; then
+            echo "skill-package.hash does not match HEAD:skill." >&2
+            echo "Current skill hash: $current_hash" >&2
+            echo "Recorded skill hash: ${recorded_hash:-"(none)"}" >&2
+            exit 1
+          fi
+
+          echo "Current skill hash: $current_hash"
+          echo "Recorded skill hash: ${recorded_hash:-"(none)"}"
+          echo "current_hash=$current_hash" >> "$GITHUB_OUTPUT"
+          echo "recorded_hash=$recorded_hash" >> "$GITHUB_OUTPUT"
+
+      - name: Read previous package hash
         id: previous_hash
-        if: ${{ github.event_name == 'push' && github.actor != 'github-actions[bot]' && github.event.before != '0000000000000000000000000000000000000000' }}
+        if: ${{ github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' }}
         run: |
           set -euo pipefail
 
@@ -59,29 +84,22 @@ jobs:
             echo "hash=$hash" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Compute skill hash
-        id: skill_hash
+      - name: Detect release hash change
+        id: release_gate
         env:
-          RECORDED_SKILL_HASH: ${{ steps.previous_hash.outputs.hash }}
+          CURRENT_SKILL_HASH: ${{ steps.skill_hash.outputs.current_hash }}
+          PREVIOUS_SKILL_HASH: ${{ steps.previous_hash.outputs.hash }}
         run: |
           set -euo pipefail
-          current_hash="$(git rev-parse HEAD:skill)"
-          recorded_hash="${RECORDED_SKILL_HASH:-}"
-
-          if [ -z "$recorded_hash" ] && [ -f skill-package.hash ]; then
-            recorded_hash="$(tr -d '\r\n' < skill-package.hash)"
-          fi
 
           changed=false
-          if [ "$current_hash" != "$recorded_hash" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            changed=true
+          elif [ "$CURRENT_SKILL_HASH" != "${PREVIOUS_SKILL_HASH:-}" ]; then
             changed=true
           fi
 
-          echo "Current skill hash: $current_hash"
-          echo "Recorded skill hash: ${recorded_hash:-"(none)"}"
-          echo "Skill hash changed: $changed"
-          echo "current_hash=$current_hash" >> "$GITHUB_OUTPUT"
-          echo "recorded_hash=$recorded_hash" >> "$GITHUB_OUTPUT"
+          echo "Release hash changed: $changed"
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
       - name: Package skill zips
@@ -162,21 +180,3 @@ jobs:
               --notes "Latest skill packages from $GITHUB_SHA." \
               --latest
           fi
-
-      - name: Record published skill hash
-        env:
-          SKILL_HASH: ${{ needs.package.outputs.skill_hash }}
-        run: |
-          set -euo pipefail
-          printf '%s\n' "$SKILL_HASH" > skill-package.hash
-
-          if git diff --quiet -- skill-package.hash; then
-            echo "skill-package.hash already records $SKILL_HASH."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add skill-package.hash
-          git commit -m "chore: record published skill package hash"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
