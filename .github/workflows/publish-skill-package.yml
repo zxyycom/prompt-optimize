@@ -1,0 +1,182 @@
+name: Publish Skill Packages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "skill/**"
+      - ".github/workflows/publish-skill-package.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    outputs:
+      skill_hash: ${{ steps.skill_hash.outputs.current_hash }}
+      recorded_skill_hash: ${{ steps.skill_hash.outputs.recorded_hash }}
+      skill_hash_changed: ${{ steps.skill_hash.outputs.changed }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate skill layout
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          skill_dirs=(skill/*)
+
+          if [ "${#skill_dirs[@]}" -eq 0 ]; then
+            echo "No skill directories found under skill/." >&2
+            exit 1
+          fi
+
+          for skill_dir in "${skill_dirs[@]}"; do
+            if [ ! -d "$skill_dir" ]; then
+              continue
+            fi
+
+            if [ ! -f "$skill_dir/SKILL.md" ]; then
+              echo "$skill_dir must contain SKILL.md." >&2
+              exit 1
+            fi
+          done
+
+      - name: Read previous published hash
+        id: previous_hash
+        if: ${{ github.event_name == 'push' && github.actor != 'github-actions[bot]' && github.event.before != '0000000000000000000000000000000000000000' }}
+        run: |
+          set -euo pipefail
+
+          if git cat-file -e "${{ github.event.before }}:skill-package.hash" 2>/dev/null; then
+            hash="$(git show "${{ github.event.before }}:skill-package.hash" | tr -d '\r\n')"
+            echo "hash=$hash" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute skill hash
+        id: skill_hash
+        env:
+          RECORDED_SKILL_HASH: ${{ steps.previous_hash.outputs.hash }}
+        run: |
+          set -euo pipefail
+          current_hash="$(git rev-parse HEAD:skill)"
+          recorded_hash="${RECORDED_SKILL_HASH:-}"
+
+          if [ -z "$recorded_hash" ] && [ -f skill-package.hash ]; then
+            recorded_hash="$(tr -d '\r\n' < skill-package.hash)"
+          fi
+
+          changed=false
+          if [ "$current_hash" != "$recorded_hash" ]; then
+            changed=true
+          fi
+
+          echo "Current skill hash: $current_hash"
+          echo "Recorded skill hash: ${recorded_hash:-"(none)"}"
+          echo "Skill hash changed: $changed"
+          echo "current_hash=$current_hash" >> "$GITHUB_OUTPUT"
+          echo "recorded_hash=$recorded_hash" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
+      - name: Package skill zips
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+
+          fixed_date = (1980, 1, 1, 0, 0, 0)
+          dist_dir = Path("dist")
+          dist_dir.mkdir(exist_ok=True)
+
+          for skill_dir in sorted(path for path in Path("skill").iterdir() if path.is_dir()):
+              output_path = dist_dir / f"{skill_dir.name}.zip"
+              files = sorted(path for path in skill_dir.rglob("*") if path.is_file())
+
+              with ZipFile(output_path, "w", compression=ZIP_DEFLATED, compresslevel=9) as archive:
+                  for file_path in files:
+                      archive_path = f"{skill_dir.name}/{file_path.relative_to(skill_dir).as_posix()}"
+                      info = ZipInfo(archive_path, fixed_date)
+                      info.compress_type = ZIP_DEFLATED
+                      info.external_attr = 0o644 << 16
+                      archive.writestr(info, file_path.read_bytes())
+
+              print(f"Packed {skill_dir.name} -> {output_path}")
+          PY
+
+      - name: Upload skill zips
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills
+          path: dist/*.zip
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    if: ${{ needs.package.outputs.skill_hash_changed == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Download skill zips
+        uses: actions/download-artifact@v4
+        with:
+          name: skills
+          path: dist
+
+      - name: Publish latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_NAME: ${{ github.event.repository.name }} latest
+          RELEASE_TAG: ${{ github.event.repository.name }}-latest
+        run: |
+          set -euo pipefail
+          git tag --force "$RELEASE_TAG" "$GITHUB_SHA"
+          git push --force origin "refs/tags/$RELEASE_TAG"
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_NAME" \
+              --notes "Latest skill packages from $GITHUB_SHA." \
+              --latest
+            gh release upload "$RELEASE_TAG" dist/*.zip --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              dist/*.zip \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_NAME" \
+              --notes "Latest skill packages from $GITHUB_SHA." \
+              --latest
+          fi
+
+      - name: Record published skill hash
+        env:
+          SKILL_HASH: ${{ needs.package.outputs.skill_hash }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$SKILL_HASH" > skill-package.hash
+
+          if git diff --quiet -- skill-package.hash; then
+            echo "skill-package.hash already records $SKILL_HASH."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add skill-package.hash
+          git commit -m "chore: record published skill package hash"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
