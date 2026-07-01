@@ -167,9 +167,7 @@ jobs:
           package_hash_short="${PACKAGE_HASH:0:12}"
           version_tag="${RELEASE_PREFIX}-${package_hash_short}"
           version_name="${RELEASE_PREFIX} ${package_hash_short}"
-          release_notes="Skill packages from $GITHUB_SHA.
-
-Package hash: $PACKAGE_HASH"
+          release_notes="$(printf 'Skill packages from %s.\n\nPackage hash: %s' "$GITHUB_SHA" "$PACKAGE_HASH")"
 
           if ! git ls-remote --exit-code --tags origin "refs/tags/$version_tag" >/dev/null 2>&1; then
             git tag "$version_tag" "$GITHUB_SHA"
